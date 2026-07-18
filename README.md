@@ -13,16 +13,6 @@ Xilinx Spartan-7 (`xc7s50csga324-1IL`).
   <a href="media/demo.mp4">Full-resolution video</a>
 </p>
 
-## What this is
-
-Everything between "custom instruction encoding" and "pixels on the
-screen" here is hand-built: the ISA, the assembler that targets it, the
-RTL that executes it, and the host-side 3D pipeline that feeds it.
-There's no soft-GPU IP, no HLS, no OpenGL — the firmware writes raw
-32-bit instruction words into a command FIFO, and the FPGA fabric
-schedules, executes, and rasterizes them across parallel SIMT lanes in
-real time over HDMI.
-
 ## Architecture
 
 ```mermaid
