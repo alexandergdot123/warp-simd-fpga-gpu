@@ -30,36 +30,94 @@ flowchart LR
     subgraph Host["MicroBlaze (soft CPU)"]
         FW["firmware/main.c\nfixed-point Q16.16 3D pipeline\n(matrix xform, clip, persp. divide)"]
     end
-    subgraph GPU["warp_gpu core (RTL)"]
-        AXI["warp_gpu_axi.sv\nAXI4-Lite command FIFO"]
-        SCHED["warp_scheduler.sv / cluster.sv\nSIMT scheduler — 20 lanes x 16 contexts"]
-        LANE["lane.sv x20\nALU / compare / shift per lane"]
-        LSU["load_store.sv, divide.sv\nper-core load/store + divide units"]
-        MEM["memMux.sv, memController.sv, cdcFifo.sv\nshared SRAM + DDR3 arbitration, CDC"]
+    subgraph GPU["warp_gpu core (RTL) — runtime-programmable clock, 80 MHz achieved"]
+        AXI["warp_gpu_axi.sv\nAXI4-Lite command FIFO + status regs"]
+        IBUF["shared instruction buffer\nhead/tail, CPU-written"]
+        SCHED["warp_scheduler.sv\ngreedy-then-oldest round robin\n20 lanes x up to 16 contexts"]
+        LANE["lane.sv x20\nALU / shift / compare per lane"]
+        MULDIV["separate multiply + divide units\n(divide is unsigned only)"]
+        LSU["load_store.sv\ncoalesces adjacent lanes into\n1x 128-bit txn/cycle, 4 loads + 4 stores/cycle"]
+        CDC["cdcFifo.sv / gray_cdc\nclock-domain crossing"]
     end
-    DISP["HDMI output\n640x480 framebuffer"]
+    subgraph MC["memController.sv"]
+        SRAM["shared SRAM\n(software-managed, no cache)"]
+        MUX["GPU / VGA arbiter\nswitches when SRAM fb buffer < half full"]
+    end
+    VGA["VGA/HDMI scanout"]
+    DDR3["DDR3 (1 Gb)\ndual framebuffers @ 0x0 / 0x96000\nram_reader.sv, up to 1.6 GB/s"]
 
-    FW -- "instruction words" --> AXI --> SCHED --> LANE --> LSU --> MEM --> DISP
+    FW -- "instruction words" --> AXI --> IBUF --> SCHED
+    SCHED --> LANE & MULDIV --> LSU --> CDC --> MC
+    MC --> SRAM --> MUX --> VGA
+    MC <--> DDR3
 ```
 
-- **20 SIMT lanes × 16 contexts**: each of the 20 parallel lanes
-  round-robins across 16 hardware contexts (warps), so long-latency
-  ops (loads, divides) hide behind other contexts instead of stalling
-  the lane.
+- **20 SIMT lanes × up to 16 hardware contexts (warps)**: 20 lanes was
+  chosen because it cleanly lets the rasterizer fill the screen's x-axis
+  in two iterations. Each lane/context pair has 16 addressable
+  registers; `r15` is hardwired to that lane's thread ID rather than
+  being general-purpose.
+- **Multiply and divide are separate execution units from the ALU**,
+  not folded into it. The divider is unsigned only.
+- **Everything is integer math** — there wasn't room in the design for
+  floating-point units, so the host firmware does all vertex/matrix
+  math in Q16.16 fixed point before handing triangles to the GPU.
 - **Predication instead of branching**: `skip_*` compare instructions
   disable a lane for the next N dynamic instructions based on a
-  register compare, rather than taking a branch — keeps the scheduler
-  simple and avoids divergent control flow.
-- **Two memory spaces**: fast shared SRAM (`lw`/`sw`) for per-tile
-  interpolants and small LUTs, and DDR3-backed global memory
-  (`lwg`/`swg`) for the framebuffer and z-buffer, bridged through a
-  clock-domain-crossing FIFO (`cdcFifo.sv`) between the GPU core clock
-  and the memory-controller clock.
+  register compare, rather than taking a branch.
+- **Scheduler**: round-robin across contexts with one-cycle lookahead —
+  it checks whether the next context can actually issue next cycle,
+  and if not, skips ahead two contexts rather than stalling on it.
+  Issue policy is greedy-then-oldest: a context keeps issuing ALU
+  instructions back-to-back for as long as it can before yielding.
+  This spreads contexts out to different points in the shared
+  instruction buffer, which in practice keeps a variety of operand/
+  instruction types available to the scheduler on any given cycle —
+  keeping the ALU, multiply/divide, and load/store pipelines full.
+- **Shared instruction buffer**: a single CPU-writable buffer with a
+  head and tail, read by 16 independent per-context program counters.
+  The tail advances when MicroBlaze writes new instructions; the head
+  advances only once every context's PC has moved past that slot.
+- **Context count is runtime-configurable**, 1 to 16, via `barrier`
+  instructions — `barrier` does double duty as both a full GPU
+  memory/execution sync point and the mechanism for reprogramming how
+  many contexts are active.
+- **Memory coalescing**: adjacent lanes' loads/stores are grouped into
+  a single 128-bit transaction, one per cycle, rather than one
+  transaction per lane. The load/store units can each sustain 4
+  loads/stores per cycle, with 2 loads or stores in flight inside the
+  GPU core itself and substantially more in flight further down the
+  pipeline (memory controller, CDC, MIG).
+- **Two memory spaces**: shared SRAM (`lw`/`sw`) and DDR3-backed global
+  memory (`lwg`/`swg`), bridged through a clock-domain-crossing FIFO
+  (`cdcFifo.sv`) between the GPU core clock and the memory-controller
+  clock. The GPU core's clock is runtime-programmable via the CDC
+  boundary — reconfigured live over the `clk_wiz` DRP interface (see
+  `reconfig_clk()` in `firmware/main.c`); 80 MHz achieved on hardware.
+- **No cache** — shared SRAM is used as a software-managed cache
+  instead, and DDR3 latency (tens of cycles) is low enough relative to
+  a discrete GPU's memory hierarchy that a hardware cache wasn't worth
+  the area.
+- **Display**: the memory controller multiplexes DDR3 access between
+  the GPU and the VGA/HDMI controller, switching dynamically based on
+  the fill level of an SRAM framebuffer buffer (up to 2048 pixels) —
+  it switches over once that buffer drops below half full. A dual
+  framebuffer in DDR3 (base addresses `0x0` and `0x96000`) eliminates
+  tearing. DDR3 capacity is 1 Gb; `ram_reader.sv` sustains up to
+  1.6 GB/s of traffic, MIG-permitting.
 - **Host-driven rendering**: the MicroBlaze firmware does vertex
   transform, clipping, and perspective divide in Q16.16 fixed point,
   then hand-assembles a tile rasterizer program directly into GPU
   instruction words per triangle — no fixed-function triangle setup
   in hardware.
+
+### AXI4-Lite status registers
+
+| Register | Meaning |
+|---|---|
+| 0 | Instruction buffer (ibuf) fill level |
+| 1 | Number of pending CPU writes not yet retired into shared memory |
+| 2 | Currently-displayed framebuffer index, packed with the current `drawX`/`drawY` scan position |
 
 ## ISA
 
@@ -73,8 +131,8 @@ bit layouts) lives in the assembler's
 | ALU | `add`, `sub` | `0000` | bit18 selects add/sub; bit19 = immediate flag |
 | ALU | `and`, `or` | `0001` | bit18 selects and/or |
 | ALU | `xor` | `0010` | |
-| ALU | `mul` | `0011` | |
-| ALU | `div` | `0100` | |
+| Multiply | `mul` | `0011` | separate execution unit from the ALU |
+| Divide | `div` | `0100` | separate execution unit from the ALU; unsigned only |
 | Shift | `lsl`, `lsr`, `asr` | `0101` | shift amount ∈ {1,2,4,8,16,24} |
 | Compare (imm) | `skip_lt/le/eq/ne/gt/ge` | `0110` | `CMPi`: disables the lane for N dynamic instructions |
 | Compare (reg) | `skip_lt/le/eq/ne/gt/ge` | `0111` | `CMP`, register operand |
