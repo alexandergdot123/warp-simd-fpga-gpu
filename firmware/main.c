@@ -20,7 +20,7 @@ void reconfig_clk(void) {
 
     Xil_Out32(CLK_WIZ_BASE + CLK_REG0, (0u << 16) | (12u << 8) | 1u); // DIVCLK=1, MULT=6
     Xil_Out32(CLK_WIZ_BASE + CLK_REG1, 0u);                          // FBOUT phase
-    Xil_Out32(CLK_WIZ_BASE + CLK_REG2, (0u << 8) | 15u);  // CLKOUT0_DIVIDE=8
+    Xil_Out32(CLK_WIZ_BASE + CLK_REG2, (0u << 8) | 17u);  // CLKOUT0_DIVIDE=8
     Xil_Out32(CLK_WIZ_BASE + CLK_REG3, 0u);                          // CLKOUT0 phase
     Xil_Out32(CLK_WIZ_BASE + CLK_REG4, 0x0000C350u);                 // 50% duty
 
