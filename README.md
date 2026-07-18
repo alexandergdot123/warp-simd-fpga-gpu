@@ -78,8 +78,8 @@ flowchart LR
 - **Memory coalescing and pipelining**: adjacent lanes' loads/stores
   are grouped into a single 128-bit transaction, one per cycle, rather
   than one transaction per lane. The load/store units can each sustain
-  4 loads/stores per cycle, with 2 loads or stores in flight inside the
-  GPU core itself, and up to 80 DDR3 128-bit loads and 80 DDR3 128-bit
+  4 loads/stores per cycle, with 2 loads or store issues in flight inside the
+  GPU lanes itself, and up to 80 DDR3 128-bit loads and 80 DDR3 128-bit
   stores in flight simultaneously further down the pipeline (memory
   controller, CDC, MIG).
 - **Two memory spaces**: shared SRAM (`lw`/`sw`, 32KB in this build)
