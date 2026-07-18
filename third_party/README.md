@@ -6,12 +6,12 @@ except where noted.
 
 ## `sdcard/`
 
-- `sdcard_init.sv` — Zuofu Cheng (2024), for ECE 385. State machine
+- `sdcard_init.sv`: Zuofu Cheng (2024), for ECE 385. State machine
   wrapper that loads raw microSDHC blocks into memory ahead of the
   VHDL SD card driver below. Used to preload DDR3 contents from a
   microSDHC card.
-- `SDCard.vhd` — XESS SDCard driver, wrapped by `sdcard_init.sv`.
-- `vga.sv` — VGA timing generator (`drawX`/`drawY`, hsync/vsync),
+- `SDCard.vhd`: XESS SDCard driver, wrapped by `sdcard_init.sv`.
+- `vga.sv`: VGA timing generator (`drawX`/`drawY`, hsync/vsync),
   instantiated by [`../rtl/videoController.sv`](../rtl/videoController.sv).
 
 ## `hdmi_tx/`
