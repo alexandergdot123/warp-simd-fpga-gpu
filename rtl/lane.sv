@@ -88,12 +88,11 @@ module CoreInstructionInterface (
     logic [31:0] store_address_waiting, store_value_waiting;
     logic [3:0] store_we_waiting;
     
-    logic holding_alu, freeze_mul_input;
+    logic holding_alu;
     logic mul_input_busy, mul_output_busy;
 
-    assign freeze_mul_input = freeze_mul_output && mul_input_busy;
     assign dr_en = (decode_pipe_alu && decode_pipe_nzp == '0 && ctx_instruction_skip[decode_pipe_ctx] == '0) || load_finished || div_finished || div_waiting || mul_output_busy || holding_alu;
-    assign dont_dispatch_mul = decode_pipe_mul || mul_output_busy || mul_input_busy;;
+    assign dont_dispatch_mul = (mul_output_busy && mul_input_busy) || (decode_pipe_mul && mul_input_busy) || (mul_output_busy && decode_pipe_mul);
     assign alu_waiting = holding_alu;
     logic [31:0] destination_register_value_anded;
     assign destination_register_value_anded = dr & {31{dr_en}};
@@ -128,6 +127,7 @@ module CoreInstructionInterface (
             freeze_div = '1;
     end
 
+    assign freeze_mul_input = freeze_mul_output && mul_input_busy;
     assign dr = ({32{holding_alu && ~freeze_alu}} & alu_holding_result) | 
         ({32{decode_pipe_alu && ctx_instruction_skip[decode_pipe_ctx] == '0 && decode_pipe_nzp == '0 && ~freeze_alu}} & alu_out) | 
         ({32{(div_finished || div_waiting) & ~freeze_div}} & (div_waiting ? div_hold_result : div_result)) | 
