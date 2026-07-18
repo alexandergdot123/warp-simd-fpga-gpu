@@ -17,7 +17,9 @@ and a Rust assembler for the ISA.
   drives the GPU with a small fixed-point (Q16.16) 3D pipeline —
   matrix transforms, perspective projection, clip-space vertex packing —
   to render shaded, depth-tested triangles.
-- `rtl/` — GPU core RTL (coming soon).
+- [`rtl/`](rtl) — GPU core RTL: SIMT cluster/scheduler, register files,
+  load/store and divide units, AXI4-Lite integration, and DDR3/board-level
+  top (SystemVerilog/Verilog).
 
 ## ISA overview
 
@@ -35,5 +37,5 @@ for the full instruction reference. Highlights:
 
 ## Status
 
-Software rasterizer pipeline and assembler are working end-to-end
-against the GPU core over a command FIFO; RTL sources to be added.
+Software rasterizer pipeline, assembler, and GPU core RTL are working
+end-to-end over a command FIFO on hardware.
