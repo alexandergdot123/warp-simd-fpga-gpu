@@ -119,8 +119,8 @@ configurable at compile time:
 | Parameter | This build | Constraint |
 |---|---|---|
 | Lane count | 20 | must be a multiple of 4, above the design's minimum |
-| Instruction buffer depth | 1024 entries | |
-| Shared memory size | 32KB | |
+| Instruction buffer depth | 1024 entries | must be a power of 2 |
+| Shared memory size | 32KB | must be a power of 2 |
 
 These three were tuned together for the best performance/utilization
 tradeoff on the `xc7s50csga324-1IL`; the design could in theory be
