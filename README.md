@@ -57,8 +57,6 @@ flowchart LR
   in two iterations. Each lane/context pair has 16 addressable
   registers; `r15` is hardwired to that lane's thread ID rather than
   being general-purpose.
-- **Multiply and divide are separate execution units from the ALU**,
-  not folded into it. The divider is unsigned only.
 - **Everything is integer math** — there wasn't room in the design for
   floating-point units, so the host firmware does all vertex/matrix
   math in Q16.16 fixed point before handing triangles to the GPU.
