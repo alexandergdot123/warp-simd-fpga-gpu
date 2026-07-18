@@ -200,5 +200,5 @@ capture, not a simulation.
 
 ## Contact
 
-Questions or feedback are welcome — reach out at
+Questions or feedback are welcome. Reach out at
 [alexanderg.123@outlook.com](mailto:alexanderg.123@outlook.com).
