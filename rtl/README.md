@@ -27,6 +27,8 @@ GPU core, AXI integration, and DDR3/BRAM support logic, in SystemVerilog
 - `axi_wrapper.sv`, `cdcFifo.sv` — AXI4-Lite bridge and clock-domain-
   crossing FIFO between the GPU's core clock and the memory/AXI clocks.
 - `testbench.sv` — cluster-level testbench.
+- `coe/core_00.coe` … `core_19.coe` — per-core BRAM initialization
+  vectors (`memory_initialization_radix=16`), one per lane/context.
 
 See [`../firmware`](../firmware) for the host driver that talks to this
 core over its AXI command FIFO, and [`../fpga_assembler`](../fpga_assembler)
