@@ -1,6 +1,6 @@
 # warp-simd-fpga-gpu
 
-A SIMT GPU built from scratch on an FPGA — custom 32-bit ISA, a
+A SIMT GPU built from scratch on an FPGA: custom 32-bit ISA, a
 tile-based triangle rasterizer, a Rust assembler, and a MicroBlaze
 host driver running a fixed-point 3D pipeline — targeting a
 Xilinx Spartan-7 (`xc7s50csga324-1IL`).
