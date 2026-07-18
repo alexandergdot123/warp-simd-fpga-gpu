@@ -48,8 +48,8 @@ flowchart LR
   in two iterations. Each lane/context pair has 16 addressable
   registers; `r15` is hardwired to that lane's thread ID rather than
   being general-purpose.
-- **Everything is integer math**: there wasn't room in the design for
-  floating-point units, so the host firmware does all vertex/matrix
+- **Integer math**: Because this was designed for a maximum-throughput GPU on a small FPGA board, there wasn't room in the design for
+  floating-point units. Therefore, the host firmware does all vertex/matrix
   math in Q16.16 fixed point before handing triangles to the GPU.
   Because operands are fixed-point, many operations, particularly
   multiply and divide, require compressing operands down to 16-bit
