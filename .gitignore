@@ -1,0 +1,7 @@
+/fpga_assembler/target
+*.exe
+*.pdb
+*.o
+fpga_assembler/ppm_to_mem
+fpga_assembler/trace_gen
+*.mem
