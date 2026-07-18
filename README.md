@@ -157,10 +157,48 @@ bit layouts) lives in the assembler's
   for the full file-by-file breakdown.
 - [`hw/`](hw) — Vivado hardware handoff (`.xsa`) and pin/timing
   constraints (`.xdc`) for the target board.
+- [`third_party/`](third_party) — SD card and HDMI TX dependencies
+  carried over from the previous iteration of this project; see that
+  folder's README for attribution.
 - [`media/`](media) — demo capture.
+
+## Setup and usage
+
+### Prerequisites
+
+- Xilinx Vivado 2022.2 (for synthesis and implementation)
+- Xilinx Vitis (for firmware build/programming)
+- Spartan-7 target board (`xc7s50csga324-1IL`)
+- microSDHC card, for preloading DDR3 contents
+
+### Steps
+
+1. **Vivado setup**
+   - Create a MicroBlaze block design and attach the `warp_gpu_1_0` IP
+     over AXI4-Lite (see [`rtl/warp_gpu_v1_0.v`](rtl/warp_gpu_v1_0.v)),
+     or import [`hw/fullSystemTop.xsa`](hw/fullSystemTop.xsa) directly.
+   - Apply [`hw/fullSystemTop.xdc`](hw/fullSystemTop.xdc) for pin/timing
+     constraints.
+   - Instantiate all block RAMs as **simple dual-port** memory:
+     - Register files ([`rtl/regFile.sv`](rtl/regFile.sv)): 256 entries
+       deep.
+     - Shared memory: enable the byte-enable feature.
+2. **Testing**: simulate the scheduler/cluster, load/store and divide
+   units, memory controller, and register file individually before
+   testing end-to-end; [`rtl/testbench.sv`](rtl/testbench.sv) covers
+   the cluster level.
+3. **Programming**: generate (or reuse) the `.xsa`, build the Vitis
+   platform and [`firmware/`](firmware) application against it, and
+   preload DDR3 contents via the microSDHC card path
+   ([`third_party/sdcard`](third_party/sdcard)).
 
 ## Status
 
 Software rasterizer pipeline, assembler, and GPU core RTL are working
 end-to-end over a command FIFO on hardware — the demo above is a live
 capture, not a simulation.
+
+## Contact
+
+Questions or feedback are welcome — reach out at
+[alexanderg.123@outlook.com](mailto:alexanderg.123@outlook.com).
